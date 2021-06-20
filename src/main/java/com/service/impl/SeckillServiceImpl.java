@@ -99,7 +99,6 @@ public class SeckillServiceImpl implements SeckillService {
             }
             //执行秒杀逻辑：减库存+记录购买行为
             Date nowTime = new Date();
-            System.out.println(nowTime.getTime());
             //代码调整，先insert后update，减少获取rowlock的时间，优化性能
             int insertResult = successSeckillDao.insertSuccessKilled(seckillId, userPhone);
             if (insertResult <= 0) {
