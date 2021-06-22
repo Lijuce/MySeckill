@@ -62,7 +62,6 @@ public class SeckillController {
      * @return 根据用户秒杀的商品id进行业务逻辑判断, 返回不同的json实体结果
      */
     @RequestMapping(value = "/{seckillId}/exposer", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
-//    @RequestMapping(value = "/{seckillId}/exposer", method = RequestMethod.POST)
     @ResponseBody
     public SeckillResult<Exposer> exposer(@PathVariable("seckillId") Long seckillId){
         // 查询秒杀商品的结果
@@ -91,7 +90,8 @@ public class SeckillController {
             return new SeckillResult<>(false, "没有注册");
         // 根据用户的手机号码,秒杀商品的id跟md5进行秒杀商品,没异常就是秒杀成功
         try {
-            SeckillExecution execution = seckillService.executeSeckill(seckillId, userPhone, md5);
+//            SeckillExecution execution = seckillService.executeSeckill(seckillId, userPhone, md5);
+            SeckillExecution execution = seckillService.executeSeckillProcedure(seckillId, userPhone, md5);
             return new SeckillResult<>(true, execution);
         }catch (RepeatKillException e1){
             // 重复秒杀

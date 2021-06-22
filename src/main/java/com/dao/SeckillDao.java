@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 秒杀库存dao
@@ -36,4 +37,7 @@ public interface SeckillDao {
      * @return 符合偏移量查出来的数据个数
      */
     List<Seckill> queryAll(@Param("offset") int offset, @Param("limit") int limit);
+
+    // 存储过程执行秒杀操作
+    void killByProcedure(Map<String, Object> paramMap);
 }

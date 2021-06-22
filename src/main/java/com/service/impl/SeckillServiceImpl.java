@@ -12,6 +12,7 @@ import com.exception.SeckillException;
 import com.pojo.Seckill;
 import com.pojo.SuccessKilled;
 import com.service.SeckillService;
+import org.apache.commons.collections.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SeckillServiceImpl implements SeckillService {
@@ -60,12 +64,7 @@ public class SeckillServiceImpl implements SeckillService {
             else
                 redisDao.putSeckill(seckill);
         }
-
 //        Seckill seckill = seckillDao.queryById(seckillId);
-//        if (seckill == null){
-//            // ??
-//            return new Exposer(true, seckillId);
-//        }
         Date startTime = seckill.getStartTime();
         Date endTime = seckill.getEndTime();
         Date nowTime = new Date();
@@ -104,14 +103,7 @@ public class SeckillServiceImpl implements SeckillService {
             if (insertResult <= 0) {
                 throw new RepeatKillException("seckill repeat");
             }
-//            int reduceResult = seckillDao.reduceNumber(seckillId, nowTime);
-//            if (reduceResult <= 0){
-//                logger.warn("没有更新数据库记录,说明秒杀结束");
-//                throw new SeckillCloseException("seckill is closed");
             else {
-//                int insertResult = successSeckillDao.insertSuccessKilled(seckillId, userPhone);
-//                if (insertResult <= 0){
-//                    throw new RepeatKillException("seckill repeat");
                 //减库存
                 int reduceResult = seckillDao.reduceNumber(seckillId, nowTime);
                 if (reduceResult <= 0){
@@ -135,4 +127,40 @@ public class SeckillServiceImpl implements SeckillService {
             throw new SeckillException("seckill inner error : " + e.getMessage());
         }
     }
+
+    /**
+     * 存储过程执行秒杀操作
+     * @param seckillId
+     * @param userPhone
+     * @param md5
+     * @return
+     */
+    @Override
+    public SeckillExecution executeSeckillProcedure(long seckillId, long userPhone, String md5) {
+        if (md5 == null || !md5.equals(getMD5(seckillId))) {
+            return new SeckillExecution(seckillId, SeckillStatEnum.DATE_REWRITE);
+        }
+        LocalDateTime killTime = LocalDateTime.now();
+        Map<String, Object> map = new HashMap<>();
+        map.put("seckillId", seckillId);
+        map.put("phone", userPhone);
+        map.put("killTime", killTime);
+        map.put("result", null);
+        // 执行储存过程,result被复制
+        try {
+            seckillDao.killByProcedure(map);
+            // 获取result
+            int result = MapUtils.getInteger(map, "result", -2);
+            if (result == 1) {
+                SuccessKilled successKilled = successSeckillDao.queryByIdWithSeckill(seckillId, userPhone);
+                return new SeckillExecution(seckillId, SeckillStatEnum.SUCCESS, successKilled);
+            } else {
+                return new SeckillExecution(seckillId, SeckillStatEnum.stateOf(result));
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            return new SeckillExecution(seckillId, SeckillStatEnum.INNER_ERROR);
+        }
+    }
+
 }
